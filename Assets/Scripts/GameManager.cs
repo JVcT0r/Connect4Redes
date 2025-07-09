@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
@@ -8,6 +9,7 @@ public class GameManager : NetworkBehaviour
 {
     [SerializeField]
     GameObject red, green;
+    
 
     bool isPlayer, hasGameFinished;
 
@@ -22,14 +24,44 @@ public class GameManager : NetworkBehaviour
 
     Board myBoard;
 
-
+    public static GameManager Instance;
     private void Awake()
     {
+        if(Instance!=null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
+        
         isPlayer = true;
         hasGameFinished = false;
         turnMessage.text = RED_MESSAGE;
         turnMessage.color = RED_COLOR;
         myBoard = new Board();
+    }
+
+    private void Start()
+    {
+        NetworkManager.Singleton.OnClientConnectedCallback += (clientId) =>
+        {
+            Debug.Log("Client with id " + clientId + " joined");
+            if (NetworkManager.Singleton.IsHost &&
+                NetworkManager.Singleton.ConnectedClients.Count == 2)
+            {
+                SpawnBoard();
+            }
+        };
+    }
+    
+    [SerializeField] private GameObject boardPrefab;
+    private GameObject newBoard;
+    private void SpawnBoard()
+    {
+        newBoard = Instantiate(boardPrefab);
+        newBoard.GetComponent<NetworkObject>().Spawn();
     }
 
 
@@ -67,10 +99,10 @@ public class GameManager : NetworkBehaviour
 
                 //Spawn the GameObject
                 Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
-                Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation;
+                Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation; 
                 GameObject circle = Instantiate(isPlayer ? red : green);
-                circle.transform.position = spawnPos;
                 circle.GetComponent<Mover>().targetPostion = targetPos;
+                circle.transform.position = spawnPos;
 
                 //Increase the targetLocationHeight
                 hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
