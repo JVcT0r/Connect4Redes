@@ -49,16 +49,76 @@ public class ServidorList : MonoBehaviour
     void HandleClient(TcpClient client)
     {
         NetworkStream stream = client.GetStream();
-
-        while (client.Connected)
+        try
         {
-            //byte[] buffer
+            while (client.Connected)
+            {
+                byte[] buffer = new byte[2048];
+                int lenght = stream.Read(buffer, 0, buffer.Length);
+
+                if (lenght <= 0) break;
+
+                string msg = Encoding.UTF8.GetString(buffer, 0, lenght);
+                Debug.Log($"[Servidor] Mensagem Recebida: {msg}");
+                lock (lockObject)
+                {
+                    int clientIndex = clients.IndexOf(client);
+                    if (clientIndex != currentPlayerIndex)
+                    {
+                        Debug.Log("[Servidor] Jogador fora de turno");
+                        SendMessageToClient(client, "{\"error\":\"Nâo é seu turno\"}");
+                    }
+
+                    int nextPlayerIndex = (currentPlayerIndex + 1) % clients.Count;
+                    if (clients.Count > 1)
+                    {
+                        TcpClient nextPlayer = clients[nextPlayerIndex];
+                        SendMessageToClient(nextPlayer, msg);
+                    }
+
+                    currentPlayerIndex = nextPlayerIndex;
+                }
+            }
         }
-    }    
+        catch (Exception e)
+        {
+            Debug.LogError("[Servidor] Erro no Cliente" + e.Message);
+        }
+        finally
+        {
+            lock (clients)
+            {
+                clients.Remove(client);
+            }
+            stream.Close();
+            client.Close();
+        }
+    }
+
+    void SendMessageToClient(TcpClient client, string msg)
+    {
+        try
+        {
+            if (client.Connected)
+            {
+                byte[] buffer = Encoding.UTF8.GetBytes(msg);
+                client.GetStream().Write(buffer, 0, buffer.Length);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("[Servidor] Erro ao enviar mensagem" + e.Message);
+        }
+    }
     void OnApplicationQuit()
     {
         server?.Stop();
         serverThread?.Abort();
+
+        foreach (TcpClient client in clients)
+        {
+            client?.Close();
+        }
     }
 }
 
