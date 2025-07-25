@@ -3,39 +3,58 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using UnityEngine;
+using System;
+using System.Collections.Generic;
 
 public class ServidorList : MonoBehaviour
 {
-    TcpListener server;
-    Thread serverThread;
+    private TcpListener server;
+    private Thread serverThread;
+    private List<TcpClient> clients = new List<TcpClient>();
+    private int currentPlayerIndex = 0;
+    private object lockObject = new object();
 
     void Start()
     {
-        serverThread = new Thread(new ThreadStart(StartServer));
+        serverThread = new Thread(StartServer);
         serverThread.IsBackground = true;
         serverThread.Start();
     }
     void StartServer()
     {
-        server = new TcpListener(IPAddress.Any, 8080);
-        server.Start();
-        Debug.Log("Servidor ouvindo na porta 8080...");
-
-        while (true)
+        try
         {
-            TcpClient client = server.AcceptTcpClient();
-            NetworkStream stream = client.GetStream();
+            server = new TcpListener(IPAddress.Any, 8080);
+            server.Start();
+            Debug.Log("[Servidor] ouvindo na porta 8080...");
 
-            byte[] buffer = new byte[1024];
-            int len = stream.Read(buffer, 0, buffer.Length);
-            string msg = Encoding.UTF8.GetString(buffer, 0, len);
-            Debug.Log($"[Servidor] Mensagem recebida: {msg}");
-
-            stream.Close();
-            client.Close();
+            while (true)
+            {
+                TcpClient client = server.AcceptTcpClient();
+                lock (clients)
+                {
+                    clients.Add(client);
+                    Debug.Log("[Servidor] Cliente conectado. Total: {clients.Count}");
+                }
+                Thread clientThread = new Thread(() => HandleClient(client));
+                clientThread.IsBackground = true;
+                clientThread.Start();
+            }
         }
-        return; 
+        catch (Exception e)
+        {
+            Debug.LogError("[Servidor] Erro" + e.Message);
+        }
     }
+    void HandleClient(TcpClient client)
+    {
+        NetworkStream stream = client.GetStream();
+
+        while (client.Connected)
+        {
+            //byte[] buffer
+        }
+    }    
     void OnApplicationQuit()
     {
         server?.Stop();
