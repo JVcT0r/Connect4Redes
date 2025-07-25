@@ -6,6 +6,7 @@
 // public class TcpClientUnity : MonoBehaviour
 // {
 //     public string serverIP = "127.0.0.1";
+
 //     TcpClient client;
 //     NetworkStream stream;
 //     Thread listenThread;
@@ -20,7 +21,6 @@
 //         listenThread.IsBackground = true;
 //         listenThread.Start();
 //     }
-//
 //     void ListenToServer()
 //     {
 //         byte[] buffer = new byte[1024];
@@ -43,14 +43,12 @@
 //             });
 //         }
 //     }
-//
 //     public void SendMove(int col, string player)
 //     {
 //         string msg = $"{col}|{player}";
 //         byte[] data = Encoding.UTF8.GetBytes(msg);
 //         stream.Write(data, 0, data.Length);
 //     }
-//
 //     void OnApplicationQuit()
 //     {
 //         stream?.Close();

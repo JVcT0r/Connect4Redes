@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading;
 using UnityEngine;
 
-public class TcpServerUnity : MonoBehaviour
+public class ServidorList : MonoBehaviour
 {
     TcpListener server;
     Thread serverThread;

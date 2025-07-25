@@ -1,51 +1,74 @@
 using System.Collections.Generic;
+using System.Collections;
 using System.Net.Sockets;
 using System.Text;
 using System.Net;
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Threading;
+using UnityEngine.UIElements;
+using Button = UnityEngine.UI.Button;
 
-public class TcpClientUnity : MonoBehaviour
+public class ClienteList : MonoBehaviour
 {
-    public List<Transform> positionBall;
-    [SerializeField]
-    public Transform red;
-    public Transform green;
-    public Transform circle;
-
-    public Vector2 redPosition;
-    public Vector2 greenPosition;
-    public Vector2 circlePosition;
+    //public List<Transform> positionBall;
+    public Transform redBall;
+    public Transform greenBall;
+    public Transform circleWhite;
     public GameObject tchecker;
     public InputField input;
     public Button sendButton;
+    
+    private TcpClient client;
+    private NetworkStream stream;
+    private Thread sendThread;
+    private bool isRunning = false;
 
     void Start()
     {
-        List<string> positionBall = new List<string>();
-        sendButton.onClick.AddListener(SendMessageToServer);
-        Update();
+        ConnectToServer();
+        sendButton.onClick.AddListener(SendManualMessage);
         
+        isRunning = true;
+        sendThread = new Thread(SendPositionsLoop);
+        sendThread.Start();
     }
 
-    void Update()
+    void ConnectToServer()
     {
-        redPosition = red.position;
-        greenPosition = green.position;
-        circlePosition = circle.position;
+        try
+        {
+            client = new TcpClient("127.0.0.1", 8080);
+            stream = client.GetStream();
+            Debug.Log("Conectado ao Servidor");
+        }
+        catch (Exception e)
+        {
+            Debug.Log("Erro ao conectar" + e.Message);
+        }
     }
-    void SendMessageToServer()
+    void SendManualMessage()
     {
         string mensagem = input.text;
         if (string.IsNullOrWhiteSpace(mensagem)) return;
-
-        TcpClient client = new TcpClient("127.0.0.1", 8080);
-        NetworkStream stream = client.GetStream();
-        byte[] data = Encoding.UTF8.GetBytes(mensagem);
-        stream.Write(data, 0, data.Length);
-        stream.Close();
-        client.Close();
+        //SendToServer(mensagem);
     }
+
+    void SendPositionsLoop()
+    {
+        while (isRunning)
+        {
+            if (client != null && stream != null && stream.CanWrite)
+            {
+                Vector2 redPos = redBall.position;
+                Vector2 greenPos = greenBall.position;
+                Vector2 whitePos = circleWhite.position;
+                
+                //string posData = $"{{\"red
+            }
+        }
+    }
+    
 }
 

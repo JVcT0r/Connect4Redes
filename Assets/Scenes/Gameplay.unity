@@ -2229,19 +2229,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0caeb19cfbcf7714e895792839c42ca8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  positionBall:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  red: {fileID: 2027660942790278988, guid: 38bc3f0b524eb0c4bbbe3dd714928647, type: 3}
-  green: {fileID: 0}
-  circle: {fileID: 0}
-  redPosition: {x: 0, y: 0}
-  greenPosition: {x: 0, y: 0}
-  circlePosition: {x: 0, y: 0}
+  redBall: {fileID: 2027660942790278988, guid: 38bc3f0b524eb0c4bbbe3dd714928647, type: 3}
+  greenBall: {fileID: 5859311872643538584, guid: 30fcf36d38425ac45a76a1b62c401d24, type: 3}
+  circleWhite: {fileID: 8778226923008081185, guid: 02a5319e575ca844da7146c9b15f3c08, type: 3}
   tchecker: {fileID: 1603652703}
   input: {fileID: 0}
-  sendButton: {fileID: 0}
+  sendButton: {fileID: 1019302856}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
