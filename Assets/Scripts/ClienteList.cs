@@ -1,74 +1,78 @@
-using System.Collections.Generic;
-using System.Collections;
 using System.Net.Sockets;
 using System.Text;
-using System.Net;
 using System;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Threading;
-using UnityEngine.UIElements;
-using Button = UnityEngine.UI.Button;
 
 public class ClienteList : MonoBehaviour
 {
-    //public List<Transform> positionBall;
     public Transform redBall;
     public Transform greenBall;
     public Transform circleWhite;
-    public GameObject tchecker;
     public InputField input;
     public Button sendButton;
+    public Button endTurnButton;
     
     private TcpClient client;
     private NetworkStream stream;
-    private Thread sendThread;
-    private bool isRunning = false;
 
     void Start()
     {
         ConnectToServer();
-        sendButton.onClick.AddListener(SendManualMessage);
-        
-        isRunning = true;
-        sendThread = new Thread(SendPositionsLoop);
-        sendThread.Start();
+        sendButton.onClick.AddListener(SendActionMessage);
+        endTurnButton.onClick.AddListener(SendEndTurn);
     }
-
     void ConnectToServer()
     {
         try
         {
             client = new TcpClient("127.0.0.1", 8080);
             stream = client.GetStream();
-            Debug.Log("Conectado ao Servidor");
+            Debug.Log("Conectado ao Servidor de turnos");
         }
         catch (Exception e)
         {
             Debug.Log("Erro ao conectar" + e.Message);
         }
     }
-    void SendManualMessage()
+    void SendActionMessage()
     {
-        string mensagem = input.text;
-        if (string.IsNullOrWhiteSpace(mensagem)) return;
-        //SendToServer(mensagem);
+        if (client == null || client.Connected) return;
+        string userText = input.text.Trim();
+        Vector2 circleWhitePos = circleWhite.position;
+        string mensagem = $"{{\"type\":\"action\",\"text\":\"{userText}\", \"circleWhite\":{{\"x\":{circleWhitePos.x},\"y\":{circleWhitePos.y}}}}}";
+        SendToServer(mensagem);
     }
-
-    void SendPositionsLoop()
+    void SendEndTurn()
     {
-        while (isRunning)
+        if (client == null || !client.Connected) return;
+        
+        string mensagem = "{\"type\":\"senEndTurn\"}";
+        SendToServer(mensagem);
+    }
+    void SendToServer(string mensagem)
+    {
+        try 
         {
-            if (client != null && stream != null && stream.CanWrite)
+            if (stream != null && stream.CanWrite)
             {
-                Vector2 redPos = redBall.position;
-                Vector2 greenPos = greenBall.position;
-                Vector2 whitePos = circleWhite.position;
-                
-                //string posData = $"{{\"red
+                byte[] data = Encoding.UTF8.GetBytes(mensagem);
+                stream.Write(data, 0, data.Length);
+                Debug.Log("Enviado" + mensagem);
             }
         }
+        catch (Exception e)
+        {
+            Debug.Log("Erro ao Enviar" + e.Message);
+        }
     }
-    
+    void OnApplicationQuit()
+    {
+        if (stream != null)
+            stream.Close();
+        
+        if (client != null)
+            client.Close();
+    }
 }
 

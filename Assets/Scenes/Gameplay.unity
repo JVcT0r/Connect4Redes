@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Button
+  m_text: Send
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1261,7 +1261,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 0, b: 0, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2232,9 +2232,9 @@ MonoBehaviour:
   redBall: {fileID: 2027660942790278988, guid: 38bc3f0b524eb0c4bbbe3dd714928647, type: 3}
   greenBall: {fileID: 5859311872643538584, guid: 30fcf36d38425ac45a76a1b62c401d24, type: 3}
   circleWhite: {fileID: 8778226923008081185, guid: 02a5319e575ca844da7146c9b15f3c08, type: 3}
-  tchecker: {fileID: 1603652703}
   input: {fileID: 0}
   sendButton: {fileID: 1019302856}
+  endTurnButton: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
