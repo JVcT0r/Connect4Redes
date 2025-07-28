@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-public class Mover : NetworkBehaviour
+public class Mover : MonoBehaviour
 {
 
     [SerializeField]
@@ -16,4 +16,5 @@ public class Mover : NetworkBehaviour
         float step = speed * Time.deltaTime;
         transform.position = Vector3.MoveTowards(transform.position, targetPostion, step);
     }
+    
 }

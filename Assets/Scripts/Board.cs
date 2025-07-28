@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
 public enum PlayerType { NONE,RED,GREEN}
 
 public struct GridPos { public int row, col; }
 
-public class Board
+public class Board : MonoBehaviour
 {
     PlayerType[][] playerBoard;
     GridPos currentPos;
@@ -23,8 +24,8 @@ public class Board
             }
         }
     }
-
-    public void UpdateBoard(int col,bool isPlayer)
+    [Rpc(SendTo.ClientsAndHost)]
+    public void UpdateBoardRpc(int col,bool isPlayer)
     {
         int updatePos = 6;
         for (int i = 5; i >= 0; i-- )
