@@ -7,14 +7,12 @@ using UnityEngine.UI;
 
 public class GameManager : NetworkBehaviour
 {
-    [SerializeField]
-    GameObject red, green;
-    
+    [SerializeField] GameObject red, green;
+
 
     bool isPlayer, hasGameFinished;
 
-    [SerializeField]
-    Text turnMessage;
+    [SerializeField] Text turnMessage;
 
     const string RED_MESSAGE = "Red's Turn";
     const string GREEN_MESSAGE = "Greens's Turn";
@@ -25,9 +23,10 @@ public class GameManager : NetworkBehaviour
     Board myBoard;
 
     public static GameManager Instance;
+
     private void Awake()
     {
-        if(Instance!=null && Instance != this)
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
         }
@@ -35,7 +34,7 @@ public class GameManager : NetworkBehaviour
         {
             Instance = this;
         }
-        
+
         isPlayer = true;
         hasGameFinished = false;
         turnMessage.text = RED_MESSAGE;
@@ -55,9 +54,10 @@ public class GameManager : NetworkBehaviour
             }
         };
     }
-    
+
     [SerializeField] private GameObject boardPrefab;
     private GameObject newBoard;
+
     private void SpawnBoard()
     {
         newBoard = Instantiate(boardPrefab);
@@ -79,54 +79,59 @@ public class GameManager : NetworkBehaviour
     }
 
 
-    
+
     private void Update()
     {
         //MousePressRpc();
-        if(Input.GetMouseButtonDown(0))
+        
+        if (Input.GetMouseButtonDown(0))
         {
             //If GameFinsished then return
             if (hasGameFinished) return;
-
+            
             //Raycast2D
             Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
             RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
             if (!hit.collider) return;
             
-            if(hit.collider.CompareTag("Press"))
+            
+
+            if (hit.collider.CompareTag("Press"))
             {
                 //Check out of Bounds
-                //if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
+                if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
 
                 //Spawn the GameObject
-                //Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
-                //Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation; 
-                SpawnCircleRpc();
-                
-                
+                Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
+                Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation;
+                SpawnCircleRpc(spawnPos, targetPos);
                 
                 /*GameObject circle = Instantiate(isPlayer ? red : green);
                 circle.GetComponent<Mover>().targetPostion = targetPos;
                 circle.transform.position = spawnPos;
                 */
 
+                
                 //Increase the targetLocationHeight
-                //hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
+                hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
 
                 //UpdateBoard
+                myBoard.UpdateBoardRpc(hit.collider.gameObject.GetComponent<Column>().col - 1, isPlayer);
                 UpdateBoardRpc();
+                if(hasGameFinished) return;
                 
                 /*
-                myBoard.UpdateBoardRpc(hit.collider.gameObject.GetComponent<Column>().col - 1, isPlayer);
                 if(myBoard.Result(isPlayer))
                 {
                     turnMessage.text = (isPlayer ? "Red" : "Green") + " Wins!";
                     hasGameFinished = true;
                     return;
-                }*/
+                }
+                */
                 
                 ChangeTurnRpc();
+                
                 /*
                 //TurnMessage
                 turnMessage.text = !isPlayer ? RED_MESSAGE : GREEN_MESSAGE;
@@ -135,32 +140,43 @@ public class GameManager : NetworkBehaviour
                 //Change PlayerTurn
                 isPlayer = !isPlayer;*/
             }
-        } 
+        }
     }
 
+    /*
     [Rpc(SendTo.ClientsAndHost)]
-    void SpawnCircleRpc()
+    void  GameFinishedRpc()
     {
+        //If GameFinsished then return
+        if (hasGameFinished) return;
+    }
+    */
+    
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void SpawnCircleRpc(Vector3 spawnPos, Vector3 targetPos)
+    {
+        /*
         //Raycast2D
         Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
         RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
-        if (!hit.collider) return;
         
         //Check out of Bounds
         if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
-        
+        */
+
         //Spawn the GameObject
-        Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
-        Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation; 
-        
         GameObject circle = Instantiate(isPlayer ? red : green);
         circle.GetComponent<Mover>().targetPostion = targetPos;
         circle.transform.position = spawnPos;
-        
-        hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
+
+        //hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
     }
 
+    
+    
+    
     [Rpc(SendTo.ClientsAndHost)]
     void ChangeTurnRpc()
     {
@@ -175,72 +191,15 @@ public class GameManager : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost)]
     void UpdateBoardRpc()
     {
-        //Raycast2D
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
-        RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
-        if (!hit.collider) return;
-        
-        //UpdateBoard
-        myBoard.UpdateBoardRpc(hit.collider.gameObject.GetComponent<Column>().col - 1, isPlayer);
         if(myBoard.Result(isPlayer))
         {
             turnMessage.text = (isPlayer ? "Red" : "Green") + " Wins!";
             hasGameFinished = true;
-            return;
         }
     }
-    
 }
-
-    /*
-    [Rpc(SendTo.Server)]
+/*
+[Rpc(SendTo.ClientsAndHost)]
     void MousePressRpc()
-    {
-       
-        if(Input.GetMouseButtonDown(0))
-        {
-            //If GameFinsished then return
-            if (hasGameFinished) return;
-
-            //Raycast2D
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
-            RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
-            if (!hit.collider) return;
-            
-            if(hit.collider.CompareTag("Press"))
-            {
-                //Check out of Bounds
-                if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
-
-                //Spawn the GameObject
-                Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
-                Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation; 
-                GameObject circle = Instantiate(isPlayer ? red : green);
-                circle.GetComponent<Mover>().targetPostion = targetPos;
-                circle.transform.position = spawnPos;
-
-                //Increase the targetLocationHeight
-                hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
-
-                //UpdateBoard
-                myBoard.UpdateBoardRpc(hit.collider.gameObject.GetComponent<Column>().col - 1, isPlayer);
-                if(myBoard.Result(isPlayer))
-                {
-                    turnMessage.text = (isPlayer ? "Red" : "Green") + " Wins!";
-                    hasGameFinished = true;
-                    return;
-                }
-
-                //TurnMessage
-                turnMessage.text = !isPlayer ? RED_MESSAGE : GREEN_MESSAGE;
-                turnMessage.color = !isPlayer ? RED_COLOR : GREEN_COLOR;
-
-                //Change PlayerTurn
-                isPlayer = !isPlayer;
-            }
-        } 
-    }
-    */
-
+    {}
+*/
