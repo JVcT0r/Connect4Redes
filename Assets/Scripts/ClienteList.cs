@@ -11,6 +11,9 @@ public class ClienteList : MonoBehaviour
     public Transform circleWhite;
     
     private Vector2 lastSendPosition;
+    private Vector2 initialRedPosition;
+    private Vector2 initialGreenPosition;
+    private Vector2 initialWhitePosition;
     private bool myTurn = true;
     private TcpClient client;
     private NetworkStream stream;
@@ -18,6 +21,10 @@ public class ClienteList : MonoBehaviour
     void Start()
     {
         ConnectToServer();
+        
+        initialRedPosition = redBall.position;
+        initialGreenPosition = greenBall.position;
+        initialWhitePosition = circleWhite.position;
         lastSendPosition = circleWhite.position;
     }
     void Update()
@@ -48,13 +55,19 @@ public class ClienteList : MonoBehaviour
     }
     void SendActionMessage()
     {
-        Vector2 circleWhitePos = circleWhite.position;
+        Vector2 whitePos = circleWhite.position;
         Vector2 greenPos = greenBall.position;
         Vector2 redPos = redBall.position;
-        /*string mensagem = $"{{\"type\":\"action\"," +
-                          $"\"circleWhite\":{{\"x\":{circleWhitePos.x},"\y\": {circleWhitePos.y}}}," +
-                          $"\"y\":{redPos.y}}}";
-        SendToServer(mensagem);*/
+        string mensagem = $"{{\"type\":\"action\"," +
+                          $"\"circleWhite\":{{\"x\":{whitePos.x},\"y\":{whitePos.y}}}," +
+                          $"\"greenBall\":{{\"x\":{greenPos.x},\"y\":{greenPos.y}}}" +
+                          $"\"redBall\":{{\"x\":{redPos.x},\"y\":{redPos.y}}}}}" + 
+                          $"\"initialPositions\":{{" +
+                            $"\"circleWhite\":{{\"x\":{initialWhitePosition.x},\"y\":{initialWhitePosition.y}}}," +
+                            $"\"greenBall\":{{\"x\":{initialGreenPosition.x},\"y\":{initialGreenPosition.y}}}," +
+                            $"\"redBall\":{{\"x\":{initialRedPosition.x},\"y\":{initialRedPosition.y}}}" +
+                          $"}}}}";
+        SendToServer(mensagem);
     }
     void SendEndTurn()
     {

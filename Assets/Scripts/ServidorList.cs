@@ -68,14 +68,12 @@ public class ServidorList : MonoBehaviour
                         Debug.Log("[Servidor] Jogador fora de turno");
                         SendMessageToClient(client, "{\"error\":\"Nâo é seu turno\"}");
                     }
-
                     int nextPlayerIndex = (currentPlayerIndex + 1) % clients.Count;
                     if (clients.Count > 1)
                     {
                         TcpClient nextPlayer = clients[nextPlayerIndex];
                         SendMessageToClient(nextPlayer, msg);
                     }
-
                     currentPlayerIndex = nextPlayerIndex;
                 }
             }
@@ -94,7 +92,6 @@ public class ServidorList : MonoBehaviour
             client.Close();
         }
     }
-
     void SendMessageToClient(TcpClient client, string mensagem)
     {
         try
