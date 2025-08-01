@@ -58,6 +58,7 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private GameObject boardPrefab;
     private GameObject newBoard;
 
+    
     private void SpawnBoard()
     {
         newBoard = Instantiate(boardPrefab);
