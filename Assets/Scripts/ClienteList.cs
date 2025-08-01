@@ -1,51 +1,86 @@
-using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
-using System.Net;
 using System;
 using UnityEngine;
-using UnityEngine.UI;
+//using UnityEngine.UI;
 
-public class TcpClientUnity : MonoBehaviour
+public class ClienteList : MonoBehaviour
 {
-    public List<Transform> positionBall;
-    [SerializeField]
-    public Transform red;
-    public Transform green;
-    public Transform circle;
-
-    public Vector2 redPosition;
-    public Vector2 greenPosition;
-    public Vector2 circlePosition;
-    public GameObject tchecker;
-    public InputField input;
-    public Button sendButton;
+    public Transform redBall;
+    public Transform greenBall;
+    public Transform circleWhite;
+    
+    private Vector2 lastSendPosition;
+    private bool myTurn = true;
+    private TcpClient client;
+    private NetworkStream stream;
 
     void Start()
     {
-        List<string> positionBall = new List<string>();
-        sendButton.onClick.AddListener(SendMessageToServer);
-        Update();
-        
+        ConnectToServer();
+        lastSendPosition = circleWhite.position;
     }
-
     void Update()
     {
-        redPosition = red.position;
-        greenPosition = green.position;
-        circlePosition = circle.position;
+        if (!myTurn || client == null || !client.Connected) return;
+        Vector2 currentPos = circleWhite.position;
+        if (currentPos != lastSendPosition)
+        {
+            SendActionMessage();
+            lastSendPosition = currentPos;
+            
+            SendEndTurn();
+            myTurn = false;
+        }
     }
-    void SendMessageToServer()
+    void ConnectToServer()
     {
-        string mensagem = input.text;
-        if (string.IsNullOrWhiteSpace(mensagem)) return;
-
-        TcpClient client = new TcpClient("127.0.0.1", 8080);
-        NetworkStream stream = client.GetStream();
-        byte[] data = Encoding.UTF8.GetBytes(mensagem);
-        stream.Write(data, 0, data.Length);
-        stream.Close();
-        client.Close();
+        try
+        {
+            client = new TcpClient("127.0.0.1", 8080);
+            stream = client.GetStream();
+            Debug.Log("Conectado ao Servidor de turnos");
+        }
+        catch (Exception e)
+        {
+            Debug.Log("Erro ao conectar" + e.Message);
+        }
+    }
+    void SendActionMessage()
+    {
+        Vector2 circleWhitePos = circleWhite.position;
+        Vector2 greenPos = greenBall.position;
+        Vector2 redPos = redBall.position;
+        /*string mensagem = $"{{\"type\":\"action\"," +
+                          $"\"circleWhite\":{{\"x\":{circleWhitePos.x},"\y\": {circleWhitePos.y}}}," +
+                          $"\"y\":{redPos.y}}}";
+        SendToServer(mensagem);*/
+    }
+    void SendEndTurn()
+    {
+        string mensagem = "{\"type\":\"senEndTurn\"}";
+        SendToServer(mensagem);
+    }
+    void SendToServer(string mensagem)
+    {
+        try 
+        {
+            if (stream != null && stream.CanWrite)
+            {
+                byte[] buffer = Encoding.UTF8.GetBytes(mensagem);
+                stream.Write(buffer, 0, buffer.Length);
+                Debug.Log("Enviado" + mensagem);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.Log("Erro ao Enviar" + e.Message);
+        }
+    }
+    void OnApplicationQuit()
+    {
+        stream?.Close();
+        client?.Close();
     }
 }
 
