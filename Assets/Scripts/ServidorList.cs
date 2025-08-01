@@ -34,7 +34,7 @@ public class ServidorList : MonoBehaviour
                 lock (clients)
                 {
                     clients.Add(client);
-                    Debug.Log("[Servidor] Cliente conectado. Total: {clients.Count}");
+                    Debug.Log($"[Servidor] Cliente conectado. Total: {clients.Count}");
                 }
                 Thread clientThread = new Thread(() => HandleClient(client));
                 clientThread.IsBackground = true;
@@ -95,13 +95,13 @@ public class ServidorList : MonoBehaviour
         }
     }
 
-    void SendMessageToClient(TcpClient client, string msg)
+    void SendMessageToClient(TcpClient client, string mensagem)
     {
         try
         {
             if (client.Connected)
             {
-                byte[] buffer = Encoding.UTF8.GetBytes(msg);
+                byte[] buffer = Encoding.UTF8.GetBytes(mensagem);
                 client.GetStream().Write(buffer, 0, buffer.Length);
             }
         }

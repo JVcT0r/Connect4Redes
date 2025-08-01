@@ -2,25 +2,36 @@ using System.Net.Sockets;
 using System.Text;
 using System;
 using UnityEngine;
-using UnityEngine.UI;
+//using UnityEngine.UI;
 
 public class ClienteList : MonoBehaviour
 {
     public Transform redBall;
     public Transform greenBall;
     public Transform circleWhite;
-    public InputField input;
-    public Button sendButton;
-    public Button endTurnButton;
     
+    private Vector2 lastSendPosition;
+    private bool myTurn = true;
     private TcpClient client;
     private NetworkStream stream;
 
     void Start()
     {
         ConnectToServer();
-        sendButton.onClick.AddListener(SendActionMessage);
-        endTurnButton.onClick.AddListener(SendEndTurn);
+        lastSendPosition = circleWhite.position;
+    }
+    void Update()
+    {
+        if (!myTurn || client == null || !client.Connected) return;
+        Vector2 currentPos = circleWhite.position;
+        if (currentPos != lastSendPosition)
+        {
+            SendActionMessage();
+            lastSendPosition = currentPos;
+            
+            SendEndTurn();
+            myTurn = false;
+        }
     }
     void ConnectToServer()
     {
@@ -37,16 +48,16 @@ public class ClienteList : MonoBehaviour
     }
     void SendActionMessage()
     {
-        if (client == null || client.Connected) return;
-        string userText = input.text.Trim();
         Vector2 circleWhitePos = circleWhite.position;
-        string mensagem = $"{{\"type\":\"action\",\"text\":\"{userText}\", \"circleWhite\":{{\"x\":{circleWhitePos.x},\"y\":{circleWhitePos.y}}}}}";
-        SendToServer(mensagem);
+        Vector2 greenPos = greenBall.position;
+        Vector2 redPos = redBall.position;
+        /*string mensagem = $"{{\"type\":\"action\"," +
+                          $"\"circleWhite\":{{\"x\":{circleWhitePos.x},"\y\": {circleWhitePos.y}}}," +
+                          $"\"y\":{redPos.y}}}";
+        SendToServer(mensagem);*/
     }
     void SendEndTurn()
     {
-        if (client == null || !client.Connected) return;
-        
         string mensagem = "{\"type\":\"senEndTurn\"}";
         SendToServer(mensagem);
     }
@@ -56,8 +67,8 @@ public class ClienteList : MonoBehaviour
         {
             if (stream != null && stream.CanWrite)
             {
-                byte[] data = Encoding.UTF8.GetBytes(mensagem);
-                stream.Write(data, 0, data.Length);
+                byte[] buffer = Encoding.UTF8.GetBytes(mensagem);
+                stream.Write(buffer, 0, buffer.Length);
                 Debug.Log("Enviado" + mensagem);
             }
         }
@@ -68,11 +79,8 @@ public class ClienteList : MonoBehaviour
     }
     void OnApplicationQuit()
     {
-        if (stream != null)
-            stream.Close();
-        
-        if (client != null)
-            client.Close();
+        stream?.Close();
+        client?.Close();
     }
 }
 
