@@ -44,7 +44,7 @@ public class ClienteList : MonoBehaviour
     {
         try
         {
-            client = new TcpClient("127.0.0.1", 8080);
+            client = new TcpClient("10.57.10.5", 8080);
             stream = client.GetStream();
             Debug.Log("Conectado ao Servidor de turnos");
         }
