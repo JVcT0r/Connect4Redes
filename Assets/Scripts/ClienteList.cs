@@ -1,8 +1,8 @@
 using System.Net.Sockets;
 using System.Text;
 using System;
+using System.Threading;
 using UnityEngine;
-//using UnityEngine.UI;
 
 public class ClienteList : MonoBehaviour
 {
@@ -13,24 +13,27 @@ public class ClienteList : MonoBehaviour
     private Vector2 lastSendPosition;
     private Vector2 initialRedPosition;
     private Vector2 initialGreenPosition;
-    private Vector2 initialWhitePosition;
     private bool myTurn = true;
     private TcpClient client;
     private NetworkStream stream;
+    private Thread listenThread;
 
     void Start()
     {
         ConnectToServer();
+
+        listenThread = new Thread(ListenServer);
+        listenThread.IsBackground = true;
+        listenThread.Start();
         
         initialRedPosition = redBall.position;
         initialGreenPosition = greenBall.position;
-        initialWhitePosition = circleWhite.position;
-        lastSendPosition = circleWhite.position;
+        lastSendPosition = redBall.position;
     }
     void Update()
     {
         if (!myTurn || client == null || !client.Connected) return;
-        Vector2 currentPos = circleWhite.position;
+        Vector2 currentPos = redBall.position;
         if (currentPos != lastSendPosition)
         {
             SendActionMessage();
@@ -53,17 +56,30 @@ public class ClienteList : MonoBehaviour
             Debug.Log("Erro ao conectar" + e.Message);
         }
     }
+    void ListenServer()
+    {
+        try
+        {
+            byte[] buffer = new byte[1024];
+            while (client != null && client.Connected)
+            {
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
     void SendActionMessage()
     {
-        Vector2 whitePos = circleWhite.position;
         Vector2 greenPos = greenBall.position;
         Vector2 redPos = redBall.position;
         string mensagem = $"{{\"type\":\"action\"," +
-                          $"\"circleWhite\":{{\"x\":{whitePos.x},\"y\":{whitePos.y}}}," +
-                          $"\"greenBall\":{{\"x\":{greenPos.x},\"y\":{greenPos.y}}}" +
-                          $"\"redBall\":{{\"x\":{redPos.x},\"y\":{redPos.y}}}}}" + 
+                          $"\"greenBall\":{{\"x\":{greenPos.x},\"y\":{greenPos.y}}}," +
+                          $"\"redBall\":{{\"x\":{redPos.x},\"y\":{redPos.y}}}}}," + 
                           $"\"initialPositions\":{{" +
-                            $"\"circleWhite\":{{\"x\":{initialWhitePosition.x},\"y\":{initialWhitePosition.y}}}," +
                             $"\"greenBall\":{{\"x\":{initialGreenPosition.x},\"y\":{initialGreenPosition.y}}}," +
                             $"\"redBall\":{{\"x\":{initialRedPosition.x},\"y\":{initialRedPosition.y}}}" +
                           $"}}}}";
@@ -71,7 +87,7 @@ public class ClienteList : MonoBehaviour
     }
     void SendEndTurn()
     {
-        string mensagem = "{\"type\":\"senEndTurn\"}";
+        string mensagem = "{\"type\":\"sendEndTurn\"}";
         SendToServer(mensagem);
     }
     void SendToServer(string mensagem)
@@ -92,6 +108,7 @@ public class ClienteList : MonoBehaviour
     }
     void OnApplicationQuit()
     {
+        listenThread.Abort();
         stream?.Close();
         client?.Close();
     }
