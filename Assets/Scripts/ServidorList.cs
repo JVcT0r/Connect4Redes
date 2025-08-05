@@ -43,7 +43,7 @@ public class ServidorList : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError("[Servidor] Erro" + e.Message);
+            Debug.LogError("[Servidor] Error" + e.Message);
         }
     }
     void HandleClient(TcpClient client)

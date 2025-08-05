@@ -64,12 +64,24 @@ public class ClienteList : MonoBehaviour
             while (client != null && client.Connected)
             {
                 int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                if (bytesRead <= 0) continue;
+                
+                string mensagemRecebida = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                Debug.Log("[Cliente] Mensagem recebida do servidor: " + mensagemRecebida);
+                if (mensagemRecebida.Contains("\type\":\"action\""))
+                {
+                    myTurn = true;
+                    Debug.Log("[Cliente] Seu turno começou.");
+                }
+                if (mensagemRecebida.Contains("\"Error\""))
+                {
+                    Debug.LogWarning("[Cliente] Aviso do servidor" + mensagemRecebida);
+                }
             }
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
-            throw;
+            Debug.LogError("[Cliente] Erro ao escutar servidor" + e.Message);
         }
     }
     void SendActionMessage()
