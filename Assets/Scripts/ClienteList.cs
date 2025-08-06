@@ -8,7 +8,6 @@ public class ClienteList : MonoBehaviour
 {
     public Transform redBall;
     public Transform greenBall;
-    public Transform circleWhite;
     
     private Vector2 lastSendPosition;
     private Vector2 initialRedPosition;
