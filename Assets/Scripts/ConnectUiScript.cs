@@ -1,6 +1,12 @@
+using System;
+using TMPro;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
+using Unity.Networking.Transport.Relay;
 using UnityEngine.UI;
 using UnityEngine;
+using Unity.Services.Relay;
+using Unity.Services.Relay.Models;
 
 public class ConnectUiScript : MonoBehaviour
 {
@@ -13,13 +19,44 @@ public class ConnectUiScript : MonoBehaviour
         clientButton.onClick.AddListener(ClientButtonOnClick);
     }
 
-    private void HostButtonOnClick()
+    [SerializeField] private TextMeshProUGUI JoinCodeText;
+    private async void HostButtonOnClick()
     {
-        NetworkManager.Singleton.StartHost();
+        try
+        {
+            
+            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(1);
+            string JoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+            JoinCodeText.text = JoinCode;
+            
+            RelayServerData relayServerData = new RelayServerData(allocation, "dtls");
+            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
+            
+            NetworkManager.Singleton.StartHost();
+        }
+        catch (RelayServiceException e)
+        {
+            Debug.Log(e);
+        }
+        
     }
 
-    private void ClientButtonOnClick()
+    [SerializeField] private TMP_InputField JoinCodeInput;
+    private async void ClientButtonOnClick()
     {
-        NetworkManager.Singleton.StartClient();
+        try
+        {
+           JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(JoinCodeInput.text);
+            
+            RelayServerData relayServerData = new RelayServerData(joinAllocation, "dtls");
+            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
+            
+            NetworkManager.Singleton.StartClient();
+        }
+        catch (RelayServiceException e)
+        {
+            Debug.Log(e);
+        }
+        
     }
 }

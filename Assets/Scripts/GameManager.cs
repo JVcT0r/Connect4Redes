@@ -2,8 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
+using Unity.Services.Authentication;
 using UnityEngine;
 using UnityEngine.UI;
+using Unity.Services.Core;
 
 public class GameManager : NetworkBehaviour
 {
@@ -42,7 +44,7 @@ public class GameManager : NetworkBehaviour
         myBoard = new Board();
     }
 
-    private void Start()
+    private async void Start()
     {
         NetworkManager.Singleton.OnClientConnectedCallback += (clientId) =>
         {
@@ -53,6 +55,9 @@ public class GameManager : NetworkBehaviour
                 SpawnBoard();
             }
         };
+
+        await UnityServices.InitializeAsync();
+        await AuthenticationService.Instance.SignInAnonymouslyAsync();
     }
 
     [SerializeField] private GameObject boardPrefab;
@@ -64,8 +69,7 @@ public class GameManager : NetworkBehaviour
         newBoard = Instantiate(boardPrefab);
         newBoard.GetComponent<NetworkObject>().Spawn();
     }
-
-
+    
     public void GameStart()
     {
         UnityEngine.SceneManagement.SceneManager.LoadScene(0);
