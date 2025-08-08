@@ -1,47 +1,41 @@
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-public enum PlayerType { NONE,RED,GREEN}
+public enum PlayerType { NONE, RED, GREEN }
 
 public struct GridPos { public int row, col; }
 
-public class Board : MonoBehaviour
+public class Board : NetworkBehaviour
 {
+    public NetworkList<int> columnHeights; // 7 colunas, cada valor representa a próxima linha vazia (de 0 a 5)
     PlayerType[][] playerBoard;
     GridPos currentPos;
 
-    public Board()
+    public override void OnNetworkSpawn()
     {
-        playerBoard = new PlayerType[6][];
-        for (int i = 0; i < playerBoard.Length; i++)
+        if (IsServer)
         {
-            playerBoard[i] = new PlayerType[7];
-            for(int j =0; j < playerBoard[i].Length; j++)
-            {
-                playerBoard[i][j] = PlayerType.NONE;
-            }
+            columnHeights = new NetworkList<int>();
+            for (int i = 0; i < 7; i++) columnHeights.Add(0);
         }
     }
-    [Rpc(SendTo.ClientsAndHost)]
-    public void UpdateBoardRpc(int col,bool isPlayer)
-    {
-        int updatePos = 6;
-        for (int i = 5; i >= 0; i-- )
-        {
-            if(playerBoard[i][col] == PlayerType.NONE)
-            {
-                updatePos--;
-            }
-            else
-            {
-                break;
-            }
-        }
 
-        playerBoard[updatePos][col] = isPlayer ? PlayerType.RED : PlayerType.GREEN;
-        currentPos = new GridPos { row = updatePos, col = col };
+    private void Awake()
+    {
+        playerBoard = new PlayerType[6][];
+        for (int i = 0; i < 6; i++)
+        {
+            playerBoard[i] = new PlayerType[7];
+            for (int j = 0; j < 7; j++)
+                playerBoard[i][j] = PlayerType.NONE;
+        }
+    }
+
+    public void UpdateBoard(int row, int col, bool isPlayer)
+    {
+        playerBoard[row][col] = isPlayer ? PlayerType.RED : PlayerType.GREEN;
+        currentPos = new GridPos { row = row, col = col };
     }
 
     public bool Result(bool isPlayer)
@@ -50,11 +44,13 @@ public class Board : MonoBehaviour
         return IsHorizontal(current) || IsVertical(current) || IsDiagonal(current) || IsReverseDiagonal(current);
     }
 
+    #region WinCheck (igual ao seu original)
+
     bool IsHorizontal(PlayerType current)
     {
         GridPos start = GetEndPoint(new GridPos { row = 0, col = -1 });
         List<GridPos> toSearchList = GetPlayerList(start, new GridPos { row = 0, col = 1 });
-        return SearchResult(toSearchList,current);
+        return SearchResult(toSearchList, current);
     }
 
     bool IsVertical(PlayerType current)
@@ -80,11 +76,9 @@ public class Board : MonoBehaviour
 
     GridPos GetEndPoint(GridPos diff)
     {
-        GridPos result = new GridPos { row = currentPos.row, col = currentPos.col };
-        while (result.row + diff.row < 6 &&
-                result.col + diff.col < 7 &&
-                result.row + diff.row >=0 &&
-                result.col + diff.col >=0)
+        GridPos result = currentPos;
+        while (result.row + diff.row < 6 && result.col + diff.col < 7 &&
+               result.row + diff.row >= 0 && result.col + diff.col >= 0)
         {
             result.row += diff.row;
             result.col += diff.col;
@@ -94,13 +88,10 @@ public class Board : MonoBehaviour
 
     List<GridPos> GetPlayerList(GridPos start, GridPos diff)
     {
-        List<GridPos> resList;
-        resList = new List<GridPos> { start };
-        GridPos result = new GridPos { row = start.row, col = start.col };
-        while (result.row + diff.row < 6 &&
-                result.col + diff.col < 7 &&
-                result.row + diff.row >= 0 &&
-                result.col + diff.col >= 0)
+        List<GridPos> resList = new List<GridPos> { start };
+        GridPos result = start;
+        while (result.row + diff.row < 6 && result.col + diff.col < 7 &&
+               result.row + diff.row >= 0 && result.col + diff.col >= 0)
         {
             result.row += diff.row;
             result.col += diff.col;
@@ -114,21 +105,18 @@ public class Board : MonoBehaviour
     {
         int counter = 0;
 
-        for(int i = 0; i < searchList.Count; i++)
+        foreach (var pos in searchList)
         {
-            PlayerType compare = playerBoard[searchList[i].row][searchList[i].col];
-            if( compare == current)
+            if (playerBoard[pos.row][pos.col] == current)
             {
                 counter++;
-                if (counter == 4)
-                    break;
+                if (counter == 4) break;
             }
-            else
-            {
-                counter = 0;
-            }
+            else counter = 0;
         }
 
         return counter >= 4;
     }
+
+    #endregion
 }

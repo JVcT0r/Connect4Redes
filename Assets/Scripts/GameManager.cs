@@ -1,54 +1,42 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Netcode;
 using Unity.Services.Authentication;
+using Unity.Services.Core;
 using UnityEngine;
 using UnityEngine.UI;
-using Unity.Services.Core;
 
 public class GameManager : NetworkBehaviour
 {
     [SerializeField] GameObject red, green;
-
-
-    bool isPlayer, hasGameFinished;
-
     [SerializeField] Text turnMessage;
+    [SerializeField] GameObject boardPrefab;
+    GameObject boardGO;
+    Board board;
 
-    const string RED_MESSAGE = "Red's Turn";
-    const string GREEN_MESSAGE = "Greens's Turn";
+    bool isPlayerTurn = true;
+    bool hasGameFinished = false;
 
-    Color RED_COLOR = new Color(231, 29, 54, 255) / 255;
-    Color GREEN_COLOR = new Color(0, 222, 1, 255) / 255;
-
-    Board myBoard;
+    static readonly string RED_MESSAGE = "Red's Turn";
+    static readonly string GREEN_MESSAGE = "Green's Turn";
+    static readonly Color RED_COLOR = new Color(231, 29, 54, 255) / 255;
+    static readonly Color GREEN_COLOR = new Color(0, 222, 1, 255) / 255;
 
     public static GameManager Instance;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-        }
-        else
-        {
-            Instance = this;
-        }
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
 
-        isPlayer = true;
+        isPlayerTurn = true;
         hasGameFinished = false;
         turnMessage.text = RED_MESSAGE;
         turnMessage.color = RED_COLOR;
-        myBoard = new Board();
     }
 
     private async void Start()
     {
         NetworkManager.Singleton.OnClientConnectedCallback += (clientId) =>
         {
-            Debug.Log("Client with id " + clientId + " joined");
             if (NetworkManager.Singleton.IsHost &&
                 NetworkManager.Singleton.ConnectedClients.Count == 2)
             {
@@ -60,151 +48,88 @@ public class GameManager : NetworkBehaviour
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
     }
 
-    [SerializeField] private GameObject boardPrefab;
-    private GameObject newBoard;
+    void SpawnBoard()
+    {
+        boardGO = Instantiate(boardPrefab);
+        boardGO.GetComponent<NetworkObject>().Spawn();
+        board = boardGO.GetComponent<Board>();
+    }
 
-    
-    private void SpawnBoard()
+    private void Update()
     {
-        newBoard = Instantiate(boardPrefab);
-        newBoard.GetComponent<NetworkObject>().Spawn();
+        if (!IsOwner || hasGameFinished) return;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
+            RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
+
+            if (hit.collider && hit.collider.CompareTag("Press"))
+            {
+                int column = hit.collider.GetComponent<Column>().col - 1;
+                RequestPlacePieceServerRpc(column);
+            }
+        }
     }
-    
-    public void GameStart()
+
+    [Rpc(SendTo.Server)]
+    void RequestPlacePieceServerRpc(int column)
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene(0);
+        if (board.columnHeights[column] >= 6 || hasGameFinished) return;
+
+        int row = board.columnHeights[column];
+        board.columnHeights[column]++;
+
+        board.UpdateBoard(row, column, isPlayerTurn);
+
+        Vector3 spawnPos = new Vector3(column - 3f, 4f, 0); // Acima da grade
+        Vector3 targetPos = new Vector3(column - 3f, -2.1f + 0.7f * row, 0);
+
+        SpawnPieceClientRpc(spawnPos, targetPos, isPlayerTurn);
+
+        if (board.Result(isPlayerTurn))
+        {
+            GameOverClientRpc(isPlayerTurn);
+            hasGameFinished = true;
+            return;
+        }
+
+        ChangeTurnClientRpc();
     }
+
+    [ClientRpc]
+    void SpawnPieceClientRpc(Vector3 spawnPos, Vector3 targetPos, bool isRed)
+    {
+        GameObject piece = Instantiate(isRed ? red : green);
+        piece.GetComponent<Mover>().targetPostion = targetPos;
+        piece.transform.position = spawnPos;
+    }
+
+    [ClientRpc]
+    void ChangeTurnClientRpc()
+    {
+        isPlayerTurn = !isPlayerTurn;
+        turnMessage.text = isPlayerTurn ? RED_MESSAGE : GREEN_MESSAGE;
+        turnMessage.color = isPlayerTurn ? RED_COLOR : GREEN_COLOR;
+    }
+
+    [ClientRpc]
+    void GameOverClientRpc(bool winnerIsRed)
+    {
+        hasGameFinished = true;
+        turnMessage.text = (winnerIsRed ? "Red" : "Green") + " Wins!";
+        turnMessage.color = winnerIsRed ? RED_COLOR : GREEN_COLOR;
+    }
+
+    public void GameStart() => UnityEngine.SceneManagement.SceneManager.LoadScene(0);
 
     public void GameQuit()
     {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
-#endif
+#else
         Application.Quit();
-    }
-
-
-
-    private void Update()
-    {
-        //MousePressRpc();
-        
-        if (Input.GetMouseButtonDown(0))
-        {
-            //If GameFinsished then return
-            if (hasGameFinished) return;
-            
-            //Raycast2D
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
-            RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
-            if (!hit.collider) return;
-            
-            
-
-            if (hit.collider.CompareTag("Press"))
-            {
-                //Check out of Bounds
-                if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
-
-                //Spawn the GameObject
-                Vector3 spawnPos = hit.collider.gameObject.GetComponent<Column>().spawnLocation;
-                Vector3 targetPos = hit.collider.gameObject.GetComponent<Column>().targetlocation;
-                SpawnCircleRpc(spawnPos, targetPos);
-                
-                /*GameObject circle = Instantiate(isPlayer ? red : green);
-                circle.GetComponent<Mover>().targetPostion = targetPos;
-                circle.transform.position = spawnPos;
-                */
-
-                
-                //Increase the targetLocationHeight
-                hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
-
-                //UpdateBoard
-                myBoard.UpdateBoardRpc(hit.collider.gameObject.GetComponent<Column>().col - 1, isPlayer);
-                UpdateBoardRpc();
-                if(hasGameFinished) return;
-                
-                /*
-                if(myBoard.Result(isPlayer))
-                {
-                    turnMessage.text = (isPlayer ? "Red" : "Green") + " Wins!";
-                    hasGameFinished = true;
-                    return;
-                }
-                */
-                
-                ChangeTurnRpc();
-                
-                /*
-                //TurnMessage
-                turnMessage.text = !isPlayer ? RED_MESSAGE : GREEN_MESSAGE;
-                turnMessage.color = !isPlayer ? RED_COLOR : GREEN_COLOR;
-
-                //Change PlayerTurn
-                isPlayer = !isPlayer;*/
-            }
-        }
-    }
-
-    /*
-    [Rpc(SendTo.ClientsAndHost)]
-    void  GameFinishedRpc()
-    {
-        //If GameFinsished then return
-        if (hasGameFinished) return;
-    }
-    */
-    
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void SpawnCircleRpc(Vector3 spawnPos, Vector3 targetPos)
-    {
-        /*
-        //Raycast2D
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
-        RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
-        
-        //Check out of Bounds
-        if (hit.collider.gameObject.GetComponent<Column>().targetlocation.y > 1.5f) return;
-        */
-
-        //Spawn the GameObject
-        GameObject circle = Instantiate(isPlayer ? red : green);
-        circle.GetComponent<Mover>().targetPostion = targetPos;
-        circle.transform.position = spawnPos;
-
-        //hit.collider.gameObject.GetComponent<Column>().targetlocation = new Vector3(targetPos.x, targetPos.y + 0.7f, targetPos.z);
-    }
-
-    
-    
-    
-    [Rpc(SendTo.ClientsAndHost)]
-    void ChangeTurnRpc()
-    {
-        //TurnMessage
-        turnMessage.text = !isPlayer ? RED_MESSAGE : GREEN_MESSAGE;
-        turnMessage.color = !isPlayer ? RED_COLOR : GREEN_COLOR;
-
-        //Change PlayerTurn
-        isPlayer = !isPlayer;
-    }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void UpdateBoardRpc()
-    {
-        if(myBoard.Result(isPlayer))
-        {
-            turnMessage.text = (isPlayer ? "Red" : "Green") + " Wins!";
-            hasGameFinished = true;
-        }
+#endif
     }
 }
-/*
-[Rpc(SendTo.ClientsAndHost)]
-    void MousePressRpc()
-    {}
-*/
