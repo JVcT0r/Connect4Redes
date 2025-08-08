@@ -1,148 +1,90 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-public enum PlayerType { NONE, RED, GREEN }
+public enum PlayerType { NONE,RED,GREEN}
 
-public struct GridPos
+public struct GridPos { public int row, col; }
+
+public class Board : MonoBehaviour
 {
-    public int row, col;
-}
+    PlayerType[][] playerBoard;
+    GridPos currentPos;
 
-public class Board : NetworkBehaviour
-{
-    private PlayerType[][] playerBoard;
-    private GridPos currentPos;
-
-    private bool isRedTurn = true;
-
-    public PlayerType[][] PlayerBoard {get; set;}
-    public bool IsRedTurn { get; set; } = true;
-    public GridPos CurrentPos { get; set; }
-
-    public bool IsColumnAvailable(int col)
+    public Board()
     {
-        return playerBoard[0][col] == PlayerType.NONE;
-    }
-
-
-
-    void Awake()
-    {
-        // Inicializa o tabuleiro com NONE
         playerBoard = new PlayerType[6][];
         for (int i = 0; i < playerBoard.Length; i++)
         {
             playerBoard[i] = new PlayerType[7];
-            for (int j = 0; j < playerBoard[i].Length; j++)
+            for(int j =0; j < playerBoard[i].Length; j++)
             {
                 playerBoard[i][j] = PlayerType.NONE;
             }
         }
     }
-
-    // Chamada local do cliente quando ele tenta jogar
-    public void TryMakeMove(int column)
+    [Rpc(SendTo.ClientsAndHost)]
+    public void UpdateBoardRpc(int col,bool isPlayer)
     {
-        MakeMoveServerRpc(column);
-    }
-
-    [ServerRpc(RequireOwnership = false)]
-    private void MakeMoveServerRpc(int column, ServerRpcParams rpcParams = default)
-    {
-        // Verifica se a jogada é válida
-        if (!IsValidMove(column)) return;
-
-        // Determina o jogador atual
-        PlayerType currentPlayer = isRedTurn ? PlayerType.RED : PlayerType.GREEN;
-
-        // Atualiza o tabuleiro no host
-        GridPos updatedPos = ApplyMove(column, currentPlayer);
-
-        // Atualiza posição atual
-        currentPos = updatedPos;
-
-        // Verifica se venceu
-        if (CheckWin(currentPlayer))
+        int updatePos = 6;
+        for (int i = 5; i >= 0; i-- )
         {
-            Debug.Log($"{currentPlayer} venceu!");
-            // Aqui você pode implementar lógica de fim de jogo
-        }
-
-        // Envia atualização para todos os clientes
-        BroadcastMoveClientRpc(updatedPos.row, updatedPos.col, (int)currentPlayer);
-
-        // Alterna o turno
-        isRedTurn = !isRedTurn;
-    }
-
-    [ClientRpc]
-    private void BroadcastMoveClientRpc(int row, int col, int player)
-    {
-        playerBoard[row][col] = (PlayerType)player;
-        currentPos = new GridPos { row = row, col = col };
-    }
-
-    private bool IsValidMove(int col)
-    {
-        return playerBoard[0][col] == PlayerType.NONE;
-    }
-
-    public GridPos ApplyMove(int col, PlayerType player)
-    {
-        for (int i = 5; i >= 0; i--)
-        {
-            if (playerBoard[i][col] == PlayerType.NONE)
+            if(playerBoard[i][col] == PlayerType.NONE)
             {
-                playerBoard[i][col] = player;
-                return new GridPos { row = i, col = col };
+                updatePos--;
+            }
+            else
+            {
+                break;
             }
         }
 
-        return new GridPos { row = -1, col = col }; // Coluna cheia (não deve acontecer por causa do IsValidMove)
+        playerBoard[updatePos][col] = isPlayer ? PlayerType.RED : PlayerType.GREEN;
+        currentPos = new GridPos { row = updatePos, col = col };
     }
 
-    // ========== Verificação de vitória ==========
-    public bool CheckWin(PlayerType player)
+    public bool Result(bool isPlayer)
     {
-        return IsHorizontal(player) || IsVertical(player) || IsDiagonal(player) || IsReverseDiagonal(player);
+        PlayerType current = isPlayer ? PlayerType.RED : PlayerType.GREEN;
+        return IsHorizontal(current) || IsVertical(current) || IsDiagonal(current) || IsReverseDiagonal(current);
     }
 
-    private bool IsHorizontal(PlayerType player)
+    bool IsHorizontal(PlayerType current)
     {
         GridPos start = GetEndPoint(new GridPos { row = 0, col = -1 });
         List<GridPos> toSearchList = GetPlayerList(start, new GridPos { row = 0, col = 1 });
-        return SearchResult(toSearchList, player);
+        return SearchResult(toSearchList,current);
     }
 
-    private bool IsVertical(PlayerType player)
+    bool IsVertical(PlayerType current)
     {
         GridPos start = GetEndPoint(new GridPos { row = -1, col = 0 });
         List<GridPos> toSearchList = GetPlayerList(start, new GridPos { row = 1, col = 0 });
-        return SearchResult(toSearchList, player);
+        return SearchResult(toSearchList, current);
     }
 
-    private bool IsDiagonal(PlayerType player)
+    bool IsDiagonal(PlayerType current)
     {
         GridPos start = GetEndPoint(new GridPos { row = -1, col = -1 });
         List<GridPos> toSearchList = GetPlayerList(start, new GridPos { row = 1, col = 1 });
-        return SearchResult(toSearchList, player);
+        return SearchResult(toSearchList, current);
     }
 
-    private bool IsReverseDiagonal(PlayerType player)
+    bool IsReverseDiagonal(PlayerType current)
     {
         GridPos start = GetEndPoint(new GridPos { row = -1, col = 1 });
         List<GridPos> toSearchList = GetPlayerList(start, new GridPos { row = 1, col = -1 });
-        return SearchResult(toSearchList, player);
+        return SearchResult(toSearchList, current);
     }
 
-    private GridPos GetEndPoint(GridPos diff)
+    GridPos GetEndPoint(GridPos diff)
     {
         GridPos result = new GridPos { row = currentPos.row, col = currentPos.col };
         while (result.row + diff.row < 6 &&
-               result.col + diff.col < 7 &&
-               result.row + diff.row >= 0 &&
-               result.col + diff.col >= 0)
+                result.col + diff.col < 7 &&
+                result.row + diff.row >=0 &&
+                result.col + diff.col >=0)
         {
             result.row += diff.row;
             result.col += diff.col;
@@ -150,14 +92,15 @@ public class Board : NetworkBehaviour
         return result;
     }
 
-    private List<GridPos> GetPlayerList(GridPos start, GridPos diff)
+    List<GridPos> GetPlayerList(GridPos start, GridPos diff)
     {
-        List<GridPos> resList = new List<GridPos> { start };
+        List<GridPos> resList;
+        resList = new List<GridPos> { start };
         GridPos result = new GridPos { row = start.row, col = start.col };
         while (result.row + diff.row < 6 &&
-               result.col + diff.col < 7 &&
-               result.row + diff.row >= 0 &&
-               result.col + diff.col >= 0)
+                result.col + diff.col < 7 &&
+                result.row + diff.row >= 0 &&
+                result.col + diff.col >= 0)
         {
             result.row += diff.row;
             result.col += diff.col;
@@ -167,18 +110,18 @@ public class Board : NetworkBehaviour
         return resList;
     }
 
-    private bool SearchResult(List<GridPos> searchList, PlayerType player)
+    bool SearchResult(List<GridPos> searchList, PlayerType current)
     {
         int counter = 0;
 
-        for (int i = 0; i < searchList.Count; i++)
+        for(int i = 0; i < searchList.Count; i++)
         {
             PlayerType compare = playerBoard[searchList[i].row][searchList[i].col];
-            if (compare == player)
+            if( compare == current)
             {
                 counter++;
                 if (counter == 4)
-                    return true;
+                    break;
             }
             else
             {
@@ -186,6 +129,6 @@ public class Board : NetworkBehaviour
             }
         }
 
-        return false;
+        return counter >= 4;
     }
 }
